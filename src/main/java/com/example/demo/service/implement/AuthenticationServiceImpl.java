@@ -45,6 +45,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         account.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
         account.setDecentralization(signUpRequest.getDecentralization());
         account.setCreateAt(signUpRequest.getCreateAt());
+        account.setEmail(signUpRequest.getEmail());
         account.setStatus(1);
         return accountRepo.save(account);
     }
@@ -120,5 +121,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
 
-
+  public Account getAccountByID(int accID){
+        Optional<Account> optionalAccount = accountRepo.findById(accID);
+        if(optionalAccount.isPresent())  return optionalAccount.get();
+        return null;
+  }
+    public List<Account> getListAccount() {
+        return accountRepo.findAll();
+    }
 }

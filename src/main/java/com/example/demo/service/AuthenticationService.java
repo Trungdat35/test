@@ -18,5 +18,6 @@ public interface AuthenticationService {
     void regenerateOTP(String email);
 
     void verifyAccount(String email, String otp);
-
+    Account getAccountByID(int accID);
+    List<Account> getListAccount();
 }
