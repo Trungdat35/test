@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -20,12 +21,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.SecurityContextPersistenceFilter;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@EnableMethodSecurity
 public class SecurityConfiguration {
     @Autowired
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -42,13 +45,17 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(request -> request
-//                        .requestMatchers("api/v1/admin/**").hasAnyAuthority("ADMIN")
-//                        .requestMatchers("api/v1/nhanvien/**").hasAnyAuthority("NHANVIEN")
-//                        .requestMatchers("api/v1/khachhang/**").hasAnyAuthority("KHACHHANG")
-                        .anyRequest().permitAll())
-                .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // quản lí phiên
-                .authenticationProvider(authenticationProvider()).addFilterBefore(
+                .authorizeHttpRequests(req ->
+                        req.requestMatchers(WHITE_LIST_URL)
+                                .permitAll()
+                        .requestMatchers("api/v1/admin/**").hasAnyAuthority("ADMIN")
+                        .requestMatchers("api/v1/nhanvien/**").hasAnyAuthority("NHANVIEN")
+                        .requestMatchers("api/v1/khachhang/**").hasAnyAuthority("KHACHHANG")
+                        .anyRequest()
+                        .permitAll())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // quản lí phiên
+                .authenticationProvider(authenticationProvider()).
+                addFilterAfter(
                         jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class
                 );
         return http.build();
