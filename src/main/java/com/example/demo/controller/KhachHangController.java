@@ -1,9 +1,7 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.OrderRequest;
-import com.example.demo.dto.ProductViews;
-import com.example.demo.dto.SignUpRequest;
-import com.example.demo.dto.UpdateStatusOrder;
+import com.example.demo.config.VnPayConfig;
+import com.example.demo.dto.*;
 import com.example.demo.exception.Response;
 import com.example.demo.model.ProductReview;
 import com.example.demo.model.Products;
@@ -21,8 +19,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @RestController
 @SecurityRequirement(
@@ -63,47 +64,103 @@ public class KhachHangController {
     }
 
     @GetMapping(value = "/getproductbyid/{id}")
-    public Products getProductByID(@PathVariable(name = "id") int pdID) {
-        return userService.getProductsByID(pdID);
+    public ProductViews getProductByID(@PathVariable(name = "id") int pdID) {
+        return productService.getProductsByID(pdID);
     }
 
     @GetMapping(value = "/getsanphannoibat")
-    public List<Products> getsanphannoibat() {
+    public ProductViews getsanphannoibat() {
         return productService.getSanPhamNoiBat();
     }
 
     @GetMapping(value = "/getsanphanlienquan")
-    public List<Products> getsanphanlienquan(@RequestParam int pdTID) {
+    public List<ProductViews> getsanphanlienquan(@RequestParam int pdTID) {
         return productService.getSanPhamLienQuan(pdTID);
     }
 
     @GetMapping(value = "/getbinhluansp/{id}")
-    public List<ProductReview> getBinhLuanSP(@PathVariable(name = "id") int pdID) {
+    public List<BinhLuanTheoSP> getBinhLuanSP(@PathVariable(name = "id") int pdID) {
         return productService.getBinhLuanTheoSP(pdID);
     }
 
     @PostMapping(value = "/dathang", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Response> datHang(@RequestBody OrderRequest orderRequest) {
         userService.datHang(orderRequest);
-        mailService.sendMail(userService.getEmailByUserID(orderRequest.getUserID()), "Trạng thái đơn hàng", "Đặt hàng thành công");
-        return ResponseEntity.ok(new Response(HttpStatus.ACCEPTED, "Thông báo đã được gửi đến mail của bạn !"));
+        return ResponseEntity.ok(new Response(HttpStatus.ACCEPTED, "Đặt hàng thàng công, thông tin đơn hàng đã được gửi đến mail của bạn !"));
     }
 
-    @PutMapping(value = "/capnhattrangthaidonhang", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Response> updateStatusOrder(@RequestBody UpdateStatusOrder updateStatusOrder) {
-        int status = userService.updateStatusOrder(updateStatusOrder);
-        if (status == 2) {
-            mailService.sendMail(updateStatusOrder.getEmail(), "Trạng thái đơn hàng", "Đơn hàng đã được xác nhận");
+    @PutMapping(value = "/huydathang", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Response> datHang(@RequestBody CancelOrderRequest orderRequest) {
+        String mess = userService.huyDonHang(orderRequest.getOrderID());
+        mailService.sendMail(userService.getEmailByUserID(orderRequest.getUserID()), "Thông tin đơn đặt hàng", mess);
+        return ResponseEntity.ok(new Response(HttpStatus.ACCEPTED, "Đặt hàng thàng công, thông tin đơn hàng đã được gửi đến mail của bạn !"));
+    }
+    @GetMapping("/pay/{amount}")
+    public String getPay(@PathVariable(name = "amount") int amount) throws UnsupportedEncodingException {
+
+        String vnp_Version = "2.1.0";
+        String vnp_Command = "pay";
+        String orderType = "other";
+        String bankCode = "NCB";
+
+        String vnp_TxnRef = VnPayConfig.getRandomNumber(8);
+        String vnp_IpAddr = "127.0.0.1";
+
+        String vnp_TmnCode = VnPayConfig.vnp_TmnCode;
+
+        Map<String, String> vnp_Params = new HashMap<>();
+        vnp_Params.put("vnp_Version", vnp_Version);
+        vnp_Params.put("vnp_Command", vnp_Command);
+        vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
+        vnp_Params.put("vnp_Amount", String.valueOf(amount*100));
+        vnp_Params.put("vnp_CurrCode", "VND");
+
+        vnp_Params.put("vnp_BankCode", bankCode);
+        vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
+        vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang:" + vnp_TxnRef);
+        vnp_Params.put("vnp_OrderType", orderType);
+
+        vnp_Params.put("vnp_Locale", "vn");
+        vnp_Params.put("vnp_ReturnUrl", VnPayConfig.vnp_ReturnUrl);
+        vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
+
+        Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+        String vnp_CreateDate = formatter.format(cld.getTime());
+        vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
+
+        cld.add(Calendar.MINUTE, 15);
+        String vnp_ExpireDate = formatter.format(cld.getTime());
+        vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
+
+        List fieldNames = new ArrayList(vnp_Params.keySet());
+        Collections.sort(fieldNames);
+        StringBuilder hashData = new StringBuilder();
+        StringBuilder query = new StringBuilder();
+        Iterator itr = fieldNames.iterator();
+        while (itr.hasNext()) {
+            String fieldName = (String) itr.next();
+            String fieldValue = (String) vnp_Params.get(fieldName);
+            if ((fieldValue != null) && (fieldValue.length() > 0)) {
+                //Build hash data
+                hashData.append(fieldName);
+                hashData.append('=');
+                hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                //Build query
+                query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString()));
+                query.append('=');
+                query.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                if (itr.hasNext()) {
+                    query.append('&');
+                    hashData.append('&');
+                }
+            }
         }
-        if (status == 3) {
-            mailService.sendMail(updateStatusOrder.getEmail(), "Trạng thái đơn hàng", "Đơn hàng đang trên đường giao đến bạn");
-        }
-        if (status == 4) {
-            mailService.sendMail(updateStatusOrder.getEmail(), "Trạng thái đơn hàng", "Đơn hàng đã được giao thành công");
-        }
-        if (status == 5) {
-            mailService.sendMail(updateStatusOrder.getEmail(), "Trạng thái đơn hàng", "Đơn hàng đã bị hủy");
-        }
-        return ResponseEntity.ok(new Response(HttpStatus.ACCEPTED, "Thông báo đã được gửi đến mail của bạn !"));
+        String queryUrl = query.toString();
+        String vnp_SecureHash = VnPayConfig.hmacSHA512(VnPayConfig.secretKey, hashData.toString());
+        queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
+        String paymentUrl = VnPayConfig.vnp_PayUrl + "?" + queryUrl;
+
+        return paymentUrl;
     }
 }

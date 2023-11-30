@@ -1,17 +1,18 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.UpdateStatusOrder;
+import com.example.demo.exception.Response;
 import com.example.demo.model.Account;
 import com.example.demo.model.Products;
 import com.example.demo.model.Users;
-import com.example.demo.service.AuthenticationService;
-import com.example.demo.service.ProductService;
-import com.example.demo.service.UserService;
+import com.example.demo.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -19,27 +20,32 @@ import java.util.List;
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 public class AdminController {
-//    @Autowired
-//    private final AuthenticationService authenticationService;
-    @Autowired
-    private UserService userService;
     @Autowired
     private ProductService productService;
+    @Autowired
+    private AdminService adminService;
+    @Autowired
+    private final MailService mailService;
+
     @GetMapping(value = "/home")
     public String getListAccount() {
         return "Hi admin";
     }
-//    @GetMapping(value = "/getallacc")
-//    public List<Account> getAllAcc() {
-//        return authenticationService.getListAccount();
-//    }
-    @GetMapping(value = "/getlistuser")
-//    @PreAuthorize("hasAuthority('ADMIN')")
-    public List<Users> getlistUser() {
-        return userService.getListUser();
-    }
-    @GetMapping(value = "/getproducts")
-    public void getlistproduct(){
-         productService.getListP();
+    @PutMapping(value = "/capnhattrangthaidonhang", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Response> updateStatusOrder(@RequestBody UpdateStatusOrder updateStatusOrder) {
+        String status = adminService.updateStatusOrder(updateStatusOrder);
+        if (updateStatusOrder.getOrderStatusID() == 2) {
+            mailService.sendMail(updateStatusOrder.getEmail(), "Trạng thái đơn hàng", " - "+status);
+        }
+        if (updateStatusOrder.getOrderStatusID() == 3) {
+            mailService.sendMail(updateStatusOrder.getEmail(), "Trạng thái đơn hàng", " - "+status);
+        }
+        if (updateStatusOrder.getOrderStatusID() == 4) {
+            mailService.sendMail(updateStatusOrder.getEmail(), "Trạng thái đơn hàng", " - "+status);
+        }
+        if (updateStatusOrder.getOrderStatusID() == 5) {
+            mailService.sendMail(updateStatusOrder.getEmail(), "Trạng thái đơn hàng", " - "+status);
+        }
+        return ResponseEntity.ok(new Response(HttpStatus.ACCEPTED, "Thông báo đã được gửi đến mail của bạn !"));
     }
 }

@@ -16,4 +16,5 @@ public class ProductViews {
     private String title;
     private int discount;
     private int numberOfViews;
+    private int numberOfOrder;
 }

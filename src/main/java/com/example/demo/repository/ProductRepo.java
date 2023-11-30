@@ -12,6 +12,6 @@ import java.util.List;
 public interface ProductRepo extends JpaRepository<Products,Integer> {
     @Query(value = "SELECT * FROM products WHERE product_type_id = :pdTID",nativeQuery = true)
     List<Products> getSPLienQuan(int pdTID);
-    @Query(value = "SELECT * FROM products WHERE product_id in : listpID",nativeQuery = true)
-    List<Products> getSPNoiBat(List<Integer> listpID);
+    @Query(value = "select product_id from products where  number_of_views =(select  max(number_of_views) from products)",nativeQuery = true)
+    int getSPNoiBat();
 }

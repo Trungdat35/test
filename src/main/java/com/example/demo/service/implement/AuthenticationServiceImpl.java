@@ -129,4 +129,5 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public List<Account> getListAccount() {
         return accountRepo.findAll();
     }
+
 }
